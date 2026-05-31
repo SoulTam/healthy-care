@@ -1,0 +1,11 @@
+__pycache__
+*.py[cod]
+.env
+.git
+.gitignore
+agent-doc/
+data/*.db
+data/chroma/
+index/
+node_modules/
+ollama_data/

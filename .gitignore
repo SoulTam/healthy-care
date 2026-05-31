@@ -1,2 +1,22 @@
 /.ai-team/
 /.opencode/
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Database
+data/*.db
+data/chroma/
+
+# Search index
+index/
+
+# IDE
+.idea/
+.vscode/
+*.swp

@@ -5,6 +5,22 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.config import settings
+from app.core.exceptions import app_exception_handler, AppException
+from app.user.router import router as auth_router
+from app.user.profile_router import router as profile_router
+from app.favorite.router import router as favorite_router
+from app.constitution.router import router as constitution_router
+from app.constitution.chat_router import router as chat_router
+from app.constitution.trend_router import router as trend_router
+from app.content.router import router as content_router
+from app.diet.router import router as diet_router
+from app.search.router import router as search_router
+from app.feedback.router import router as feedback_router
+from engine.llm.client import llm_client
+from engine.embedding.client import embedding_client
+from engine.retrieval.base import chroma_client
+
 from src.models import SearchRequest, PlanRequest
 from src.search_engine import SearchEngine
 from src.intent_parser import IntentParser
@@ -20,13 +36,31 @@ intent_parser = IntentParser()
 combiner = Combiner()
 logger.info(f"Ready: {len(search_engine.recipes)} recipes indexed, embedder={'loaded' if search_engine.embedder else 'not available'}")
 
-app = FastAPI(title="中医食补检索 API", version="0.2.0")
+app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_exception_handler(AppException, app_exception_handler)
+
+
+@app.on_event("startup")
+async def startup():
+    app.include_router(auth_router)
+    app.include_router(profile_router)
+    app.include_router(favorite_router)
+    app.include_router(constitution_router)
+    app.include_router(chat_router)
+    app.include_router(trend_router)
+    app.include_router(content_router)
+    app.include_router(diet_router)
+    app.include_router(search_router)
+    app.include_router(feedback_router)
+    await llm_client.check_availability()
+    logger.info(f"LLM client available: {llm_client.available}")
+    await chroma_client.initialize()
 
 
 @app.get("/")
@@ -37,6 +71,11 @@ async def root():
         "phase": "2 - BM25 + BGE嵌入 + 元数据过滤",
         "recipes_indexed": len(search_engine.recipes),
     }
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "app": settings.APP_NAME, "version": settings.APP_VERSION}
 
 
 @app.post("/search")
