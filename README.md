@@ -54,7 +54,7 @@ healthy-care/
 │   └── retrieval/          #   向量检索 (ChromaDB)
 ├── src/                    # v0.2 语义检索引擎 (Whoosh + BM25 + BGE)
 ├── tests/                  # pytest 测试
-├── data/                   # 数据目录 (SQLite + Chroma)
+├── data/                   # 数据目录 (Chroma 等运行时数据)
 ├── scripts/                # 脚本 + 部署文档
 ├── main.py                 # FastAPI 入口
 ├── Dockerfile              # Docker 构建
@@ -66,7 +66,7 @@ healthy-care/
 | 层级 | 技术 |
 |------|------|
 | 后端框架 | FastAPI (Python 3.12+) |
-| 数据库 | SQLite (开发) / PostgreSQL (生产) |
+| 数据库 | PostgreSQL (开发/生产统一) |
 | ORM | SQLAlchemy 2.0 (async) |
 | 向量数据库 | ChromaDB |
 | AI 引擎 | Ollama + Qwen2.5 / BGE-small-zh |
@@ -95,8 +95,28 @@ healthy-care/
 
 - Python 3.12+
 - pip
-- （可选）Docker & Docker Compose
-- （可选）Ollama（本地 LLM 推理）
+- PostgreSQL 16+（本机运行）或 Docker & Docker Compose（推荐）
+- （可选）Ollama（本地 LLM 推理，AI 对话/反馈解读等功能需要）
+
+### 安装 Ollama（本地 LLM）
+
+```bash
+# 方式一：直接安装（Windows / macOS / Linux）
+# 访问 https://ollama.com/download 下载安装包
+
+# 方式二：Docker 安装
+docker run -d -p 11434:11434 --name ollama ollama/ollama
+
+# 拉取 Qwen2.5 7B 模型
+docker exec ollama ollama pull qwen2.5:7b
+# 或直接安装时拉取：
+ollama pull qwen2.5:7b
+
+# 验证模型可用
+ollama run qwen2.5:7b "你好，请用一句话介绍中医食疗"
+```
+
+Ollama 默认监听 `http://localhost:11434`，在 `.env` 中配置即可被应用识别。
 
 ### 1. 安装依赖
 
@@ -111,9 +131,26 @@ cp .env.example .env
 # 编辑 .env 文件，按需修改配置
 ```
 
-默认 `.env` 配置即可在开发环境运行。
+开发和生产统一使用 PostgreSQL。默认 `.env` 连接本机 PostgreSQL：
 
-### 3. 启动服务
+```env
+DATABASE_URL=postgresql+asyncpg://healthy_care:healthy_care@localhost:5432/healthy_care
+```
+
+如使用 Docker Compose 启动，应用容器会自动覆盖为 `postgres` 服务地址。
+
+### 3. 启动 PostgreSQL
+
+```bash
+# 推荐：仅启动开发数据库
+docker-compose up -d postgres
+
+# 或使用本机 PostgreSQL，自行创建数据库与用户：
+# database: healthy_care
+# user/password: healthy_care/healthy_care
+```
+
+### 4. 启动服务
 
 ```bash
 # 开发模式（热重载）
@@ -125,7 +162,7 @@ python run_server.py
 
 访问 http://localhost:8000/docs 查看 Swagger API 文档。
 
-### 4. 验证服务
+### 5. 验证服务
 
 ```bash
 curl http://localhost:8000/health
@@ -143,12 +180,97 @@ docker exec ollama ollama pull qwen2.5:7b
 
 ## Docker 部署
 
-```bash
-# 一键启动全部服务（FastAPI + ChromaDB + Ollama）
-docker-compose up -d
+### 环境要求
 
-# 查看日志
+- [Docker](https://docs.docker.com/get-docker/) 24+
+- [Docker Compose](https://docs.docker.com/compose/install/) v2.24+（通常随 Docker Desktop 一同安装）
+
+> **Windows**：推荐安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)，安装后确保在 Settings → Resources → WSL Integration 中启用你的 WSL 发行版。
+>
+> **Linux**：安装 Docker Engine 后，需额外安装 docker-compose-plugin：
+> ```bash
+> sudo apt-get install docker-compose-plugin
+> ```
+>
+> **macOS**：安装 [Docker Desktop for Mac](https://docs.docker.com/desktop/setup/install/mac-install/) 即可。
+
+### 1. 配置环境变量
+
+```bash
+cp .env.example .env
+# 编辑 .env 文件，如需修改数据库密码等配置
+```
+
+Docker Compose 会自动用 `postgres` 服务地址覆盖 `DATABASE_URL`，无需手动修改。
+
+### 2. 一键启动全部服务
+
+```bash
+docker-compose up -d
+```
+
+这会同时启动以下容器：
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| app | `8000` | FastAPI 应用 |
+| postgres | `5432` | PostgreSQL 数据库 |
+| chroma | `8001` | ChromaDB 向量数据库 |
+| ollama | `11434` | Ollama LLM 引擎（可选，拉取模型后生效） |
+
+### 3. 初始化数据库（首次启动）
+
+```bash
+# 创建数据库表
+docker-compose exec app alembic upgrade head
+
+# 导入初始食谱数据
+docker-compose exec app python scripts/seed_recipes.py
+```
+
+### 4. 拉取 LLM 模型（可选，AI 功能需要）
+
+```bash
+docker-compose exec ollama ollama pull qwen2.5:7b
+```
+
+### 5. 验证服务
+
+```bash
+curl http://localhost:8000/health
+# 返回: {"status":"ok","app":"HealthyCare","version":"1.0.0"}
+```
+
+访问 http://localhost:8000/docs 查看 Swagger API 文档。
+
+### 仅启动数据库（开发模式）
+
+如果只需在本地开发时使用 Docker 运行数据库：
+
+```bash
+docker-compose up -d postgres chroma
+```
+
+### 常用命令
+
+```bash
+# 查看所有服务日志
+docker-compose logs -f
+
+# 查看应用日志
 docker-compose logs -f app
+
+# 重启应用（代码变更后）
+docker-compose restart app
+
+# 停止所有服务
+docker-compose down
+
+# 停止并删除数据卷（⚠️ 会清空数据库）
+docker-compose down -v
+
+# 重新构建镜像（依赖变更时）
+docker-compose build app
 ```
 
 ---
@@ -219,7 +341,7 @@ curl "http://localhost:8000/api/v1/search/recipes?q=阴虚失眠&top_k=5"
 | `src/` | 语义检索引擎（Whoosh BM25 + BGE 混合检索） |
 | `tests/` | 自动化测试 |
 | `data/recipes.json` | 初始食谱数据（18 道） |
-| `data/` | 运行时数据（SQLite + Chroma 持久化） |
+| `data/` | 运行时数据（Chroma 持久化等） |
 | `agent-doc/` | 项目文档（蓝图/计划/验证报告） |
 
 ---

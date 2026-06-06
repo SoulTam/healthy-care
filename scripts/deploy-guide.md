@@ -10,10 +10,13 @@ pip install -r requirements.txt
 cp .env.example .env
 # 编辑 .env 中的配置
 
-# 3. 启动服务
+# 3. 启动 PostgreSQL
+docker-compose up -d postgres
+
+# 4. 启动服务
 python -m uvicorn main:app --reload --port 8000
 
-# 4. 可选：启动 Ollama（需要本地 LLM）
+# 5. 可选：启动 Ollama（需要本地 LLM）
 docker run -d -p 11434:11434 --name ollama ollama/ollama
 docker exec ollama ollama pull qwen2.5:7b
 ```
@@ -21,7 +24,7 @@ docker exec ollama ollama pull qwen2.5:7b
 ## Docker 部署
 
 ```bash
-# 一键启动全部服务
+# 一键启动全部服务（FastAPI + PostgreSQL + ChromaDB + Ollama）
 docker-compose up -d
 
 # 查看日志

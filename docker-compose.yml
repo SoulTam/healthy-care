@@ -6,10 +6,31 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://healthy_care:healthy_care@postgres:5432/healthy_care
     depends_on:
-      - chroma
+      postgres:
+        condition: service_healthy
+      chroma:
+        condition: service_started
     volumes:
       - ./data:/app/data
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: healthy_care
+      POSTGRES_USER: healthy_care
+      POSTGRES_PASSWORD: healthy_care
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthy_care -d healthy_care"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   chroma:
     image: chromadb/chroma:latest
@@ -24,3 +45,6 @@ services:
       - "11434:11434"
     volumes:
       - ./ollama_data:/root/.ollama
+
+volumes:
+  postgres_data:

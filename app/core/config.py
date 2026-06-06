@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
-    DATABASE_URL: str = "sqlite+aiosqlite:///./data/healthy_care.db"
+    DATABASE_URL: str = "postgresql+asyncpg://healthy_care:healthy_care@localhost:5432/healthy_care"
     DATABASE_ECHO: bool = False
 
     SECRET_KEY: str = "change-me-in-production"

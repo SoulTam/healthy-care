@@ -27,7 +27,7 @@
 | 6 | 创建 app/core/dependencies.py | ✅ | get_current_user |
 | 7 | 创建 app/core/exceptions.py | ✅ | AppException + handler |
 | 8 | 创建 app/core/schemas.py | ✅ | ResponseModel + PaginatedResponse |
-| 9 | 创建 requirements.txt | ✅ | 新增 pydantic-settings, jose, bcrypt, aiosqlite |
+| 9 | 创建 requirements.txt | ✅ | 新增 pydantic-settings, jose, bcrypt, asyncpg |
 | 10 | 创建 app/admin/models.py | ✅ | AdminOperationLog + IndexMaintenanceLog |
 
 ## 完成标志验证
