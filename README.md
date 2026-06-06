@@ -185,7 +185,19 @@ docker exec ollama ollama pull qwen2.5:7b
 - [Docker](https://docs.docker.com/get-docker/) 24+
 - [Docker Compose](https://docs.docker.com/compose/install/) v2.24+（通常随 Docker Desktop 一同安装）
 
-> **Windows**：推荐安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)，安装后确保在 Settings → Resources → WSL Integration 中启用你的 WSL 发行版。
+> **Windows**：通过 PowerShell 安装 Docker Desktop：
+> ```powershell
+> # 使用 winget 安装 Docker Desktop
+> winget install Docker.DockerDesktop
+> 
+> # 安装后启动 Docker Desktop
+> Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+> 
+> # 验证安装
+> docker --version
+> docker compose version
+> ```
+> 安装完成后在 Docker Desktop → Settings → Resources → WSL Integration 中启用你的 WSL 发行版。
 >
 > **Linux**：安装 Docker Engine 后，需额外安装 docker-compose-plugin：
 > ```bash
